@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  AWS Cloudformation Template to create a RDS MySQL instance for PCDS {{ Enter Env Name }}.
+  Depends on PCDS {{ Enter Env Name }} VPC, Security Groups and Custom KMS Keys
+Parameters:
+  Owner:
+    Description: Enter Team or Individual Name Responsible for the Stack.
+    Type: String
+    Default: FirstName LastName
+  Project:
+    Description: Enter Project Name.
+    Type: String
+    Default: pcds
+  EnvName:
+    Description: Environment name
+    Type: String
+  RootUsername:
+    Description: User for the RDS MySQL cluster
+    Type: String
+  RootPassword:
+    Description: Password for the RDS MySQL cluster user
+    Type: String
+    NoEcho: true
+  SchemaName:
+    Description: Name of DB schema
+    Type: String
+    Default: anticoag
+  AllocatedStorage:
+    Default: '20'
+    Description: The size of the database (GB)
+    Type: Number
+    MinValue: '8'
+    MaxValue: '6144'
+    ConstraintDescription: Must be between 8-6144
+  BackupRetentionPeriod:
+    Description: Enter Backup Retention Period in Days.
+    Type: Number
+    Default: '7'
+  DBVersion:
+    Description: Select the version you wish to run for this RDS instance.
+    Type: String
+    Default: 5.5.61
+    AllowedValues:
+      - 5.5.61
+      - 5.6.44
+      - 5.7.26
+      - 8.0.16
+  InstanceType:
+    Description: Select Instance Type.
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.micro
+      - db.t3.small
+      - db.t3.medium
+      - db.t3.large
+      - db.m1.small
+      - db.m1.medium
+      - db.m1.large
+      - db.m1.xlarge
+      - db.m3.medium
+      - db.m3.large
+      - db.m3.xlarge
+      - db.m3.2xlarge
+      - db.m4.large
+      - db.m4.xlarge
+      - db.m4.2xlarge
+      - db.m4.4xlarge
+      - db.m4.10xlarge
+      - db.r3.large
+      - db.r3.xlarge
+      - db.r3.2xlarge
+      - db.r3.4xlarge
+      - db.r3.8xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+  MultiAvailabilityZone:
+    Description: Enable Multi Availability Zones?
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  PreferredBackupWindow:
+    Description: Enter Preferred Backup Window Time (UTC).
+    Type: String
+    Default: '23:00-00:00'
+  PreferredMaintenanceWindow:
+    Description: Enter Preferred Maintenance Window Time (UTC).
+    Type: String
+    Default: 'Sun:19:00-Sun:23:00'
+Resources:
+  DbInstance:
+    Type: 'AWS::RDS::DBInstance'
+    DeletionPolicy: Snapshot
+    Properties:
+      AllocatedStorage: !Ref AllocatedStorage
+      AllowMajorVersionUpgrade: 'false'
+      AutoMinorVersionUpgrade: 'true'
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      DBInstanceClass: !Ref InstanceType
+      DBInstanceIdentifier: !Ref 'AWS::StackName'
+      DBSubnetGroupName:
+        'Fn::ImportValue': !Sub 'pcds-${EnvName}-DBSubnetGroup'
+      VPCSecurityGroups:
+        - 'Fn::ImportValue': !Sub 'pcds-${EnvName}-sg-MySqlCluster'
+      Engine: MySQL
+      EngineVersion: !Ref DBVersion
+      DBName: !Ref SchemaName
+      MasterUsername: !Ref RootUsername
+      MasterUserPassword: !Ref RootPassword
+      MultiAZ: !Ref MultiAvailabilityZone
+      PreferredBackupWindow: !Ref PreferredBackupWindow
+      PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
+      PubliclyAccessible: 'false'
+      StorageEncrypted: 'true'
+      KmsKeyId: 
+        - 'Fn::ImportValue': !Sub 'kms-${EnvName}-rds'
+      StorageType: gp2
+      Tags:
+        - Key: Name
+          Value: !Ref 'AWS::StackName'
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: Environment
+          Value: !Ref EnvName
+Outputs:
+  outRdsEndpoint:
+    Description: The endpoint for the RDS Cluster
+    Value: !GetAtt 
+      - DbInstance
+      - Endpoint.Address
+    Export:
+      Name: !Sub 'pcds-${EnvName}-rds-Endpoint'

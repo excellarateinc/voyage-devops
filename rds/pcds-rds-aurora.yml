@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  AWS Cloudformation Template to create 
+  RDS Aurora MySQL Serverless Cluster.
+Parameters:
+  ArouraUsername:
+    Description: User for the RDS MySQL cluster
+    Type: String
+  ArouraPassword:
+    Description: Password for the RDS MySQL cluster user
+    Type: String
+    NoEcho: true
+  DBName:
+    Description: Name of DB schema
+    Type: String
+    Default: anticoag
+  StackName:
+    Description: Name for this stack
+    Type: String
+    Default: pcds-rds
+Resources:
+  RdsDbCluster:
+    Type: 'AWS::RDS::DBCluster'
+    Properties:
+      DBClusterIdentifier: !Ref StackName
+      MasterUsername: !Ref ArouraUsername
+      MasterUserPassword: !Ref ArouraPassword
+      DatabaseName: !Ref DBName
+      Engine: aurora
+      EngineMode: serverless
+      StorageEncrypted: true
+      ScalingConfiguration:
+        AutoPause: false
+        MinCapacity: 1
+        MaxCapacity: 4
+      DeletionProtection: True
+      KmsKeyId: 
+        - 'Fn::ImportValue': !Sub 'kms-${EnvName}-rds'
+      DBSubnetGroupName:
+        'Fn::ImportValue': !Sub 'pcds-${EnvName}-DBSubnetGroup'
+      VPCSecurityGroups:
+        - 'Fn::ImportValue': !Sub 'pcds-${EnvName}-sg-MySqlCluster'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e4a3b372-b6c1-450d-ad09-f4fa566ca4d0
+Outputs:
+  outRdsEndpoint:
+    Description: The endpoint for the RDS Cluster
+    Value:
+      'Fn::GetAtt':
+        - RdsDbCluster
+        - Endpoint.Address
+    Export:
+      Name: pcds-rds-Endpoint

@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Security Groups for PCDS {{ Enter Env Name }}. Depends on PCDS-{{ Enter Env Name }} VPC Stack
+Metadata:
+  'AWS::CloudFormation::Designer':
+    4d5fb9af-38ed-4002-8bf0-5dbcc145907c:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -50
+        'y': 20
+      z: 1
+      embeds: []
+Parameters:
+  Project:
+    Description: Enter Project Name.
+    Type: String
+    Default: pcds
+  EnvName:
+    Description: Environment name
+    Type: String
+Resources:
+  AppServer:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: 
+        Fn::ImportValue:
+          !Sub 'pcds-${EnvName}-VPC'
+      GroupName: !Sub 'pcds-${EnvName}-AppServer'
+      GroupDescription: Application server security group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 24.245.4.87/32
+          Description: SSH
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 24.245.4.87/32
+          Description: Apache Web
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 24.245.4.87/32
+          Description: Apache Web Secure
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 24.245.4.87/32
+          Description: Tomcat
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub 'pcds-${EnvName}-sg-AppServer'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 4d5fb9af-38ed-4002-8bf0-5dbcc145907c
+  MySqlCluster:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: 
+        Fn::ImportValue:
+          !Sub 'pcds-${EnvName}-VPC'
+      GroupName: !Sub 'pcds-${EnvName}-MySQLCluster'
+      GroupDescription: MySQL server security group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupId: !Ref AppServer
+          Description: MYSQL/Aurora
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub 'pcds-${EnvName}-sg-MySqlCluster'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 4d5fb9af-38ed-4002-8bf0-5dbcc1434321c
+Outputs:
+  outAppServers:
+    Description: The ID of the AppServers security group
+    Value: !Ref AppServer
+    Export:
+      Name: !Sub 'pcds-${EnvName}-sg-AppServer'
+  outMySQLCluster:
+    Description: The ID of the PCDS RDS MySql security group
+    Value: !Ref MySqlCluster
+    Export:
+      Name: !Sub 'pcds-${EnvName}-sg-MySqlCluster'

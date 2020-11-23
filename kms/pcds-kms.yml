@@ -1,0 +1,45 @@
+Parameters:
+  KeyAlias:
+    Description: Name of the KMS Key
+    Type: String
+  EnvName:
+    Description: Environment name
+    Type: String
+  AWSService:
+    Description: AWS Service name
+    Type: String
+Resources:
+  Key1:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: key-rds-encryption
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: 'kms:*'
+            Resource: '*'
+      Tags:
+        - Key: Function
+          Value: RDS encryption
+  Alias1:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/${KeyAlias}'
+      TargetKeyId: !Ref Key1
+Outputs:
+  outKms:
+    Description: Output for KMS ARN
+    Value:
+      'Fn::GetAtt':
+        - Key1
+        - Arn
+    Export:
+      Name: !Sub 'kms-${EnvName}-${AWSService}'
